@@ -480,7 +480,12 @@ def run(
         models = [m for m in thread_pool.map(gen_model_from_sexpr, fn_args)]
 
     else:
-        models = [gen_model(args, idx, ex) for idx, ex in execs_to_model]
+        models = []
+        for idx, ex in execs_to_model:
+            res = gen_model(args, idx, ex)
+            models.append(res)
+            if res.is_valid:
+                break
 
     no_counterexample = all(m.model is None for m in models)
     passed = no_counterexample and normal > 0 and len(stuck) == 0

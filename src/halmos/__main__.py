@@ -801,7 +801,10 @@ def gen_model(args: Namespace, idx: int, ex: Exec) -> ModelWithContext:
     if is_unknown(res, model) and args.solver_subprocess:
         if args.verbose >= 1:
             print(f"  Checking again in an external process")
-        fname = f"/tmp/{uuid.uuid4().hex}.smt2"
+        dirname = args.dump_smt_queries
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        fname = f"{dirname}/{idx+1}.smt2"
         if args.verbose >= 1:
             print(f"    {args.solver_subprocess_command} {fname} >{fname}.out")
         query = ex.solver.to_smt2()

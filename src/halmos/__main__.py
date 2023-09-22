@@ -453,17 +453,17 @@ def run(
         else:
             stuck.append((opcode, idx, ex))
 
-    if len(execs_to_model) > 0 and args.dump_smt_queries != "":
-        dirname = args.dump_smt_queries
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-        print(f"Generating SMT queries in {dirname}")
-        for idx, ex in execs_to_model:
-            fname = f"{dirname}/{idx+1}.smt2"
-            query = ex.solver.to_smt2()
-            with open(fname, "w") as f:
-                f.write("(set-logic QF_AUFBV)\n")
-                f.write(query)
+    # if len(execs_to_model) > 0 and args.dump_smt_queries != "":
+    #     dirname = args.dump_smt_queries
+    #     if not os.path.exists(dirname):
+    #         os.makedirs(dirname)
+    #     print(f"Generating SMT queries in {dirname}")
+    #     for idx, ex in execs_to_model:
+    #         fname = f"{dirname}/{idx+1}.smt2"
+    #         query = ex.solver.to_smt2()
+    #         with open(fname, "w") as f:
+    #             f.write("(set-logic QF_AUFBV)\n")
+    #             f.write(query)
 
     if len(execs_to_model) > 0 and args.verbose >= 1:
         print(
@@ -801,7 +801,8 @@ def gen_model(args: Namespace, idx: int, ex: Exec) -> ModelWithContext:
     if is_unknown(res, model) and args.solver_subprocess:
         if args.verbose >= 1:
             print(f"  Checking again in an external process")
-        dirname = args.dump_smt_queries
+        default_dir = f"/tmp/{uuid.uuid4().hex}"
+        dirname = args.dump_smt_queries if args.dump_smt_queries != "" else default_dir
         if not os.path.exists(dirname):
             os.makedirs(dirname)
         fname = f"{dirname}/{idx+1}.smt2"

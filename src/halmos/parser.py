@@ -149,8 +149,10 @@ def mk_arg_parser() -> argparse.ArgumentParser:
 
     group_debug.add_argument(
         "--dump-smt-queries",
-        action="store_true",
-        help="dump SMT queries for assertion violations",
+        metavar="DUMP_FILENAME",
+        default="",
+        type=str,
+        help="give the file path to dump SMT queries for assertion violations",
     )
 
     # build options
@@ -215,6 +217,13 @@ def mk_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="run an extra solver in subprocess for unknown",
     )
+
+    group_solver.add_argument(
+        "--solver-smt-div",
+        action="store_true",
+        help="send real div to the solver",
+    )
+
     group_solver.add_argument(
         "--solver-subprocess-command",
         metavar="COMMAND",

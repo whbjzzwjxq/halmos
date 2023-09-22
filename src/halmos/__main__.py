@@ -453,9 +453,10 @@ def run(
         else:
             stuck.append((opcode, idx, ex))
 
-    if len(execs_to_model) > 0 and args.dump_smt_queries:
-        dirname = f"/tmp/{funname}.{uuid.uuid4().hex}"
-        os.makedirs(dirname)
+    if len(execs_to_model) > 0 and args.dump_smt_queries != "":
+        dirname = args.dump_smt_queries
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
         print(f"Generating SMT queries in {dirname}")
         for idx, ex in execs_to_model:
             fname = f"{dirname}/{idx+1}.smt2"
@@ -779,21 +780,23 @@ def gen_model(args: Namespace, idx: int, ex: Exec) -> ModelWithContext:
         print(f"Checking path condition (path id: {idx+1})")
 
     model = None
-
+    res = unknown
     ex.solver.set(timeout=args.solver_timeout_assertion)
-    res = ex.solver.check()
-    if res == sat:
-        model = ex.solver.model()
 
-    if is_unknown(res, model) and args.solver_fresh:
-        if args.verbose >= 1:
-            print(f"  Checking again with a fresh solver")
-        sol2 = SolverFor("QF_AUFBV", ctx=Context())
-        # sol2.set(timeout=args.solver_timeout_assertion)
-        sol2.from_string(ex.solver.to_smt2())
-        res = sol2.check()
+    if not args.solver_smt_div:
+        res = ex.solver.check()
         if res == sat:
-            model = sol2.model()
+            model = ex.solver.model()
+
+        if is_unknown(res, model) and args.solver_fresh:
+            if args.verbose >= 1:
+                print(f"  Checking again with a fresh solver")
+            sol2 = SolverFor("QF_AUFBV", ctx=Context())
+            # sol2.set(timeout=args.solver_timeout_assertion)
+            sol2.from_string(ex.solver.to_smt2())
+            res = sol2.check()
+            if res == sat:
+                model = sol2.model()
 
     if is_unknown(res, model) and args.solver_subprocess:
         if args.verbose >= 1:

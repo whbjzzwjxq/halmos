@@ -236,6 +236,12 @@ def mk_arg_parser() -> argparse.ArgumentParser:
         help="run assertion solvers in parallel",
     )
 
+    group_solver.add_argument(
+        "--solver-only-dump",
+        action="store_true",
+        help="only dump query as smt query"
+    )
+
     # internal options
     group_internal = parser.add_argument_group("Internal options")
 

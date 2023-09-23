@@ -428,8 +428,6 @@ def run(
         )
     )
 
-    timer.create_subtimer("models")
-
     # check assertion violations
     normal = 0
     execs_to_model = []
@@ -453,22 +451,42 @@ def run(
         else:
             stuck.append((opcode, idx, ex))
 
-    # if len(execs_to_model) > 0 and args.dump_smt_queries != "":
-    #     dirname = args.dump_smt_queries
-    #     if not os.path.exists(dirname):
-    #         os.makedirs(dirname)
-    #     print(f"Generating SMT queries in {dirname}")
-    #     for idx, ex in execs_to_model:
-    #         fname = f"{dirname}/{idx+1}.smt2"
-    #         query = ex.solver.to_smt2()
-    #         with open(fname, "w") as f:
-    #             f.write("(set-logic QF_AUFBV)\n")
-    #             f.write(query)
-
     if len(execs_to_model) > 0 and args.verbose >= 1:
         print(
             f"# of potential paths involving assertion violations: {len(execs_to_model)} / {len(exs)}"
         )
+
+    if args.solver_only_dump:
+        fnames = []
+        assert(args.dump_smt_queries != "", "please provide the folder smt query should dump to.")
+        dirname = args.dump_smt_queries
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        print(f"Generating SMT queries in {dirname}")
+        for idx, ex in execs_to_model:
+            fname = os.path.join(dirname, f"{idx+1}.smt2")
+            fnames.append(f"see {fname}.out")
+            query = ex.solver.to_smt2()
+            if args.solver_smt_div:
+                # replace uninterpreted abstraction with actual symbols for assertion solving
+                # TODO: replace `(evm_bvudiv x y)` with `(ite (= y (_ bv0 256)) (_ bv0 256) (bvudiv x y))`
+                #       as bvudiv is undefined when y = 0; also similarly for evm_bvurem
+                query = re.sub(r"(\(\s*)evm_(bv[a-z]+)(_[0-9]+)?\b", r"\1\2", query)
+            with open(fname, "w") as f:
+                f.write("(set-logic QF_AUFBV)\n")
+                f.write(query)
+
+        return TestResult(
+            funsig,
+            0,
+            len(execs_to_model),
+            fnames,
+            (len(exs), normal, len(stuck)),
+            (timer.elapsed(), timer["paths"].elapsed(), 0),
+            len(logs.bounded_loops),
+        )
+        
+    timer.create_subtimer("models")
 
     if len(execs_to_model) > 1 and args.solver_parallel:
         if args.verbose >= 1:

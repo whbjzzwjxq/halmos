@@ -472,6 +472,8 @@ def run(
                 # TODO: replace `(evm_bvudiv x y)` with `(ite (= y (_ bv0 256)) (_ bv0 256) (bvudiv x y))`
                 #       as bvudiv is undefined when y = 0; also similarly for evm_bvurem
                 query = re.sub(r"(\(\s*)evm_(bv[a-z]+)(_[0-9]+)?\b", r"\1\2", query)
+                # There is a bug, so just fix it with hacking.
+                query = query.replace("udiv_i", "udiv")
             with open(fname, "w") as f:
                 f.write("(set-logic QF_AUFBV)\n")
                 f.write(query)

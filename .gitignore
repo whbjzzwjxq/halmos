@@ -24,3 +24,5 @@ out/
 
 # Self-build
 build
+.vscode
+

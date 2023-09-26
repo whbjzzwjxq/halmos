@@ -18,6 +18,7 @@ from .utils import color_good, color_warn, hexify, NamedTimer
 from .warnings import *
 from .parser import mk_arg_parser
 from .calldata import Calldata
+from .eurus import interpret_div
 
 StrModel = Dict[str, str]
 AnyModel = UnionType[Model, StrModel]
@@ -458,7 +459,7 @@ def run(
 
     if args.solver_only_dump:
         fnames = []
-        assert(args.dump_smt_queries != "", "please provide the folder smt query should dump to.")
+        assert args.dump_smt_queries != "", "please provide the folder smt query should dump to."
         dirname = args.dump_smt_queries
         if not os.path.exists(dirname):
             os.makedirs(dirname)
@@ -504,8 +505,6 @@ def run(
         for idx, ex in execs_to_model:
             res = gen_model(args, idx, ex)
             models.append(res)
-            if res.is_valid:
-                break
 
     no_counterexample = all(m.model is None for m in models)
     passed = no_counterexample and normal > 0 and len(stuck) == 0
@@ -808,51 +807,26 @@ def gen_model(args: Namespace, idx: int, ex: Exec) -> ModelWithContext:
     res = unknown
     ex.solver.set(timeout=args.solver_timeout_assertion)
 
-    if not args.solver_smt_div:
+    if args.solver_smt_div:
+        
+        old_formulas = ex.solver.assertions()
+        new_formulas = [interpret_div(f) for f in old_formulas]
+        # while len(ex.solver.assertions()) > 0:
+        #     ex.solver.pop()
+        ex.solver = Solver(ctx=ex.solver.ctx)
+        ex.solver.add(*new_formulas)
         res = ex.solver.check()
         if res == sat:
             model = ex.solver.model()
-
-        if is_unknown(res, model) and args.solver_fresh:
-            if args.verbose >= 1:
-                print(f"  Checking again with a fresh solver")
-            sol2 = SolverFor("QF_AUFBV", ctx=Context())
-            # sol2.set(timeout=args.solver_timeout_assertion)
-            sol2.from_string(ex.solver.to_smt2())
-            res = sol2.check()
-            if res == sat:
-                model = sol2.model()
-
-    if is_unknown(res, model) and args.solver_subprocess:
-        if args.verbose >= 1:
-            print(f"  Checking again in an external process")
-        default_dir = f"/tmp/{uuid.uuid4().hex}"
-        dirname = args.dump_smt_queries if args.dump_smt_queries != "" else default_dir
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-        fname = f"{dirname}/{idx+1}.smt2"
-        if args.verbose >= 1:
-            print(f"    {args.solver_subprocess_command} {fname} >{fname}.out")
-        query = ex.solver.to_smt2()
-        # replace uninterpreted abstraction with actual symbols for assertion solving
-        # TODO: replace `(evm_bvudiv x y)` with `(ite (= y (_ bv0 256)) (_ bv0 256) (bvudiv x y))`
-        #       as bvudiv is undefined when y = 0; also similarly for evm_bvurem
-        query = re.sub(r"(\(\s*)evm_(bv[a-z]+)(_[0-9]+)?\b", r"\1\2", query)
-        with open(fname, "w") as f:
-            f.write("(set-logic QF_AUFBV)\n")
-            f.write(query)
-        cmd = args.solver_subprocess_command.split() + [fname]
-        res_str = subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
-        res_str_head = res_str.split("\n", 1)[0]
-        with open(f"{fname}.out", "w") as f:
-            f.write(res_str)
-        if args.verbose >= 1:
-            print(f"    {res_str_head}")
-        if res_str_head == "unsat":
-            res = unsat
-        elif res_str_head == "sat":
-            res = sat
-            model = f"{fname}.out"
+    elif args.label_smt_div:
+        pass
+    elif args.fuzz_smt_div:
+        pass
+    else:
+        # default or --smt-div turning on.
+        res = ex.solver.check()
+        if res == sat:
+            model = ex.solver.model()
 
     return package_result(model, idx, res, args)
 

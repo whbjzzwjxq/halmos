@@ -147,14 +147,6 @@ def mk_arg_parser() -> argparse.ArgumentParser:
         help="turn unknown counterexample warnings to errors",
     )
 
-    group_debug.add_argument(
-        "--dump-smt-queries",
-        metavar="DUMP_FILENAME",
-        default="",
-        type=str,
-        help="give the file path to dump SMT queries for assertion violations",
-    )
-
     # build options
     group_build = parser.add_argument_group("Build options")
 
@@ -177,7 +169,36 @@ def mk_arg_parser() -> argparse.ArgumentParser:
     group_solver.add_argument(
         "--no-smt-mul", action="store_true", help="do not interpret `*`"
     )
-    group_solver.add_argument("--smt-div", action="store_true", help="interpret `/`")
+    group_solver.add_argument(
+        "--smt-div", 
+        action="store_true", 
+        help="interpret `/` for both solving branching conditions and assertion violation conditions"
+    )
+
+    group_solver.add_argument(
+        "--solver-smt-div",
+        action="store_true",
+        help="interpret `/` only for solving assertion violation conditions"
+    )
+
+    group_solver.add_argument(
+        "--label-smt-div",
+        action="store_true",
+        help="interpret `/` using labeling data/control flow analysis for solving assertion violation conditions"
+    )
+
+    group_solver.add_argument(
+        "--fuzz-smt-div",
+        action="store_true",
+        help="interpret `/` using fuzzing for solving assertion violation conditions"
+    )
+
+    group_solver.add_argument(
+        "--fuzz-parameter",
+        type=str,
+        help="Format: Threshold;Seed"
+    )
+
     group_solver.add_argument("--smt-mod", action="store_true", help="interpret `mod`")
     group_solver.add_argument(
         "--smt-div-by-const", action="store_true", help="interpret division by constant"
@@ -219,12 +240,6 @@ def mk_arg_parser() -> argparse.ArgumentParser:
     )
 
     group_solver.add_argument(
-        "--solver-smt-div",
-        action="store_true",
-        help="send real div to the solver",
-    )
-
-    group_solver.add_argument(
         "--solver-subprocess-command",
         metavar="COMMAND",
         default="z3 -model",
@@ -239,7 +254,15 @@ def mk_arg_parser() -> argparse.ArgumentParser:
     group_solver.add_argument(
         "--solver-only-dump",
         action="store_true",
-        help="only dump query as smt query"
+        help="only dump SMT queries instead of solving assertion violations"
+    )
+
+    group_debug.add_argument(
+        "--dump-smt-queries",
+        metavar="DUMP_FILENAME",
+        default="",
+        type=str,
+        help="give the file path to dump SMT queries of solving assertion violations",
     )
 
     # internal options

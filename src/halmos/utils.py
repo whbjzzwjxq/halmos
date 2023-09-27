@@ -634,7 +634,10 @@ class NamedTimer:
         self.name = name
         self.start_time = timer() if auto_start else None
         self.end_time = None
-        self.sub_timers = []
+        self.sub_timers: list["NamedTimer"] = []
+        self.paused = False
+        self.paused_start_time = None
+        self.paused_duration = 0.0
 
     def start(self):
         if self.start_time is not None:
@@ -673,7 +676,26 @@ class NamedTimer:
 
         end_time = self.end_time if self.end_time is not None else timer()
 
-        return end_time - self.start_time
+        return end_time - self.start_time - self.paused_duration
+
+    def pause(self):
+        for sub_timer in self.sub_timers:
+            sub_timer.pause()
+        if not self.paused:
+            self.paused_start_time = timer()
+            self.paused = True
+        else:
+            raise ValueError("Already paused!")
+
+    def resume(self):
+        for sub_timer in self.sub_timers:
+            sub_timer.resume()
+        if self.paused:
+            paused_end_time = timer()
+            self.paused_duration += paused_end_time - self.paused_start_time
+            self.paused = False
+        else:
+            raise ValueError("Not paused yet!")
 
     def report(self, include_subtimers=True) -> str:
         sub_reports_str = ""
